@@ -19,7 +19,7 @@ jobs:
     
       # 修复源路径配置问题
       - name: Copy files to server
-        uses: appleboy/scp-action@v1.0.2  # 使用指定版本避免兼容问题
+        uses: appleboy/scp-action@v0.1.1  # 使用指定版本避免兼容问题
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.SSH_USER_NAME }}
