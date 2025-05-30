@@ -1,0 +1,43 @@
+name: deploy on push production branch
+on:
+  push:
+    branches: [prod]
+
+jobs:
+  deploy-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4  # 升级到最新稳定版[2](@ref)
+        
+      - name: Validate source files
+        run: |
+          if [ ! -d "html" ] || [ -z "$(ls -A html)" ]; then
+            echo "❌ 错误：html目录不存在或为空"
+            exit 1
+          fi
+
+      - name: Configure target permissions
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.SSH_USER_NAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            sudo mkdir -p /var/www/html
+            sudo chown -R ${{ secrets.SSH_USER_NAME }}:www-data /var/www/html
+            sudo chmod -R 775 /var/www/html
+
+      - name: Deploy via SCP
+        uses: appleboy/scp-action@v0.1.7  # 使用稳定版本[2](@ref)
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.SSH_USER_NAME }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "html/"  # 移除通配符*[8,10](@ref)
+          target: "/var/www/html"
+          strip_components: 1
+          overwrite: true  # 强制覆盖
+          args: '-v -p'  # 启用详细日志并保留权限[7](@ref)
+          command_timeout: 10m  # 延长超时时间
