@@ -4,15 +4,39 @@ jobs:
   deploy-app:
     runs-on: ubuntu-latest
     steps:
-      - name: check out the code to build server
-        uses: actions/checkout@v4 
-      - name: copy file to server
-        uses: appleboy/scp-action@master
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Fix permissions
+        uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{secrets.HOST}}
-          username: ${{secrets.SSH_USER_NAME}}
-          port: ${{secrets.SSH_PORT}}
-          key: ${{secrets.SSH_KEY}}
-          source: "/html/*"
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.SSH_USER_NAME }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            sudo mkdir -p /var/www/html  # 确保目录存在
+            sudo chown -R ubuntu:ubuntu /var/www/html  # 临时修改目录所有者
+    
+      # 修复源路径配置问题
+      - name: Copy files to server
+        uses: appleboy/scp-action@v1.0.2  # 使用指定版本避免兼容问题
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.SSH_USER_NAME }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "html/"   # 关键修改：使用目录路径而非通配符
           target: "/var/www/html"
-          strip_components: 1
+          strip_components: 0  # 保留完整目录结构
+          
+      # 恢复服务器权限（可选但推荐）
+      - name: Restore permissions
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.SSH_USER_NAME }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            sudo chown -R www-data:www-data /var/www/html  # 改回默认权限
+            sudo chmod -R 755 /var/www/html  # 设置安全权限
